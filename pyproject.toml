@@ -1,0 +1,8 @@
+[project]
+name = "local-llm-poc"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "google-cloud-compute>=1.52.0",
+]
