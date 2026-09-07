@@ -71,9 +71,9 @@ uv run python teardown_vm.py --action delete
 
 | GPU | VRAM | MACHINE_TYPE | GPU_TYPE | SPOT概算 |
 |---|---|---|---|---|
-| T4 | 16GB | n1-standard-4 | nvidia-tesla-t4 | ~$0.15/h |
-| L4 | 24GB | g2-standard-4 | nvidia-l4 | ~$0.25/h |
-| A100 | 40GB | a2-highgpu-1g | nvidia-tesla-a100 | ~$1.00/h |
+| T4 | 16GB | n1-standard-4 | nvidia-tesla-t4 | ~$0.20/h（us-central1確認済み） |
+| L4 | 24GB | g2-standard-4 | nvidia-l4 | 未確認 |
+| A100 | 40GB | a2-highgpu-1g | nvidia-tesla-a100 | 未確認 |
 
 ## GPU在庫について
 

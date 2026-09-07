@@ -8,9 +8,9 @@ PROJECT = _project
 ZONE = os.environ.get("GCP_ZONE", "us-central1-b")
 VM_NAME = "local-llm-poc-vm"
 # GPU options (MACHINE_TYPE / GPU_TYPE / VRAM / approx SPOT price):
-#   T4  16GB: n1-standard-4  / nvidia-tesla-t4   / ~$0.15/h  ← default
-#   L4  24GB: g2-standard-4  / nvidia-l4          / ~$0.25/h
-#   A100 40GB: a2-highgpu-1g / nvidia-tesla-a100  / ~$1.00/h
+#   T4  16GB: n1-standard-4  / nvidia-tesla-t4   / ~$0.20/h SPOT  ← default (us-central1確認済み)
+#   L4  24GB: g2-standard-4  / nvidia-l4          / SPOT価格未確認
+#   A100 40GB: a2-highgpu-1g / nvidia-tesla-a100  / SPOT価格未確認
 MACHINE_TYPE = "n1-standard-4"
 GPU_TYPE = "nvidia-tesla-t4"
 GPU_COUNT = 1
