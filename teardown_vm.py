@@ -33,7 +33,7 @@ def stop_vm() -> None:
     print(f"VM {VM_NAME} stopped.")
 
 
-def delete_vm() -> None:
+def delete_vm(skip_confirm: bool = False) -> None:
     instances_client = compute_v1.InstancesClient()
     ops_client = compute_v1.ZoneOperationsClient()
 
@@ -43,10 +43,11 @@ def delete_vm() -> None:
         print(f"  uv run python teardown_vm.py --action stop")
         raise SystemExit(1)
 
-    answer = input(f"Delete VM '{VM_NAME}' permanently? [yes/N]: ").strip().lower()
-    if answer != "yes":
-        print("Aborted.")
-        return
+    if not skip_confirm:
+        answer = input(f"Delete VM '{VM_NAME}' permanently? [yes/N]: ").strip().lower()
+        if answer != "yes":
+            print("Aborted.")
+            return
 
     print(f"Deleting VM {VM_NAME} ...")
     op = instances_client.delete(project=PROJECT, zone=ZONE, instance=VM_NAME)
@@ -62,12 +63,13 @@ def main() -> None:
         required=True,
         help="stop: stop the VM. delete: permanently delete the VM (must be stopped first).",
     )
+    parser.add_argument("--yes", action="store_true", help="skip confirmation prompt")
     args = parser.parse_args()
 
     if args.action == "stop":
         stop_vm()
     else:
-        delete_vm()
+        delete_vm(skip_confirm=args.yes)
 
 
 if __name__ == "__main__":

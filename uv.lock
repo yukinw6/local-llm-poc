@@ -455,7 +455,7 @@ wheels = [
 ]
 
 [[package]]
-name = "llm-poc"
+name = "local-llm-poc"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

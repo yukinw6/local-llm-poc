@@ -6,14 +6,41 @@ if not _project:
 
 PROJECT = _project
 ZONE = os.environ.get("GCP_ZONE", "us-central1-b")
-VM_NAME = "local-llm-poc-vm"
-# GPU options (MACHINE_TYPE / GPU_TYPE / VRAM / approx SPOT price):
-#   T4  16GB: n1-standard-4  / nvidia-tesla-t4   / ~$0.20/h SPOT  ← default (us-central1確認済み)
-#   L4  24GB: g2-standard-4  / nvidia-l4          / SPOT価格未確認
-#   A100 40GB: a2-highgpu-1g / nvidia-tesla-a100  / SPOT価格未確認
-MACHINE_TYPE = "n1-standard-4"
-GPU_TYPE = "nvidia-tesla-t4"
-GPU_COUNT = 1
 DISK_SIZE_GB = 100
 IMAGE_PROJECT = "deeplearning-platform-release"
 IMAGE_FAMILY = "common-cu129-ubuntu-2204-nvidia-580"
+
+PROFILES = {
+    "t4": {
+        "machine_type": "n1-standard-4",
+        "gpu_type": "nvidia-tesla-t4",
+        "gpu_count": 1,
+        "vram_gb": 16,
+        "default_model": "qwen3:8b",
+    },
+    "l4": {
+        "machine_type": "g2-standard-4",
+        "gpu_type": "nvidia-l4",
+        "gpu_count": 1,
+        "vram_gb": 24,
+        "default_model": "qwen3:14b",
+    },
+    "a100-40": {
+        "machine_type": "a2-highgpu-1g",
+        "gpu_type": "nvidia-tesla-a100",
+        "gpu_count": 1,
+        "vram_gb": 40,
+        "default_model": "qwen3:32b",
+    },
+}
+
+_profile_name = os.environ.get("GCP_GPU_PROFILE", "t4")
+if _profile_name not in PROFILES:
+    raise SystemExit(f"Error: Unknown GCP_GPU_PROFILE={_profile_name!r}. Choose from: {list(PROFILES)}")
+
+PROFILE = PROFILES[_profile_name]
+MACHINE_TYPE = PROFILE["machine_type"]
+GPU_TYPE = PROFILE["gpu_type"]
+GPU_COUNT = PROFILE["gpu_count"]
+DEFAULT_MODEL = PROFILE["default_model"]
+VM_NAME = f"local-llm-poc-{_profile_name}"

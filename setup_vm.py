@@ -1,10 +1,10 @@
-"""VM作成スクリプト: GCP GPU VM (T4) を作成して起動完了を待つ"""
+"""VM作成スクリプト: GCP GPU VM を作成して起動完了を待つ"""
 import time
 import google.cloud.compute_v1 as compute_v1
 from config import (
     PROJECT, ZONE, VM_NAME, MACHINE_TYPE,
     GPU_TYPE, GPU_COUNT, DISK_SIZE_GB,
-    IMAGE_PROJECT, IMAGE_FAMILY,
+    IMAGE_PROJECT, IMAGE_FAMILY, DEFAULT_MODEL,
 )
 
 
@@ -83,6 +83,7 @@ def create_vm() -> None:
     print("Next steps:")
     print(f"  gcloud compute scp install_ollama.sh {VM_NAME}:~ --zone={ZONE} --project={PROJECT}")
     print(f"  gcloud compute ssh {VM_NAME} --zone={ZONE} --project={PROJECT}")
+    print(f"  # VM上で: MODEL={DEFAULT_MODEL} bash install_ollama.sh")
 
 
 if __name__ == "__main__":
