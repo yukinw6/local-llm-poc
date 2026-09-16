@@ -9,12 +9,14 @@ curl -fsSL https://ollama.ai/install.sh | sh
 
 echo "=== Starting Ollama service ==="
 ollama serve &
-sleep 5
+sleep 10
 
 MODEL=${MODEL:-qwen3:8b}
 
-echo "=== Pulling ${MODEL} ==="
-ollama pull "${MODEL}"
+if [ "${MODEL}" != "skip" ]; then
+  echo "=== Pulling ${MODEL} ==="
+  ollama pull "${MODEL}"
+fi
 
 echo "=== Done. Run inference with: ==="
 echo "  ollama run ${MODEL} \"日本語で自己紹介してください\""

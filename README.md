@@ -72,17 +72,24 @@ uv run python teardown_vm.py --action delete --yes   # --yes でプロンプト�
 
 ### T4 16GB（us-central1-b）
 
-| モデル | サイズ | 日本語品質 | 備考 |
+| モデル | VRAM使用 | tok/s | 備考 |
 |---|---|---|---|
-| `qwen3:8b` | 5.2GB | ✅ 良好 | デフォルト |
-| `deepseek-r1:8b` | 5.2GB | △ テンプレ気味 | 推論特化 |
-| `qwen3:14b` | 9.3GB | ✅ 最良 | 余裕で収まる |
+| `qwen3:8b` | ~5GB | - | デフォルト、日本語良好 |
+| `deepseek-r1:8b` | ~5GB | - | 推論特化、日本語はテンプレ気味 |
+| `qwen3:14b` | ~9GB | - | 日本語最良、余裕で収まる |
+
+※ T4 モデルは定性評価のみ（benchmark.py 未実施）
 
 ### A100 40GB（asia-northeast1-a）
 
-| モデル | サイズ | 日本語品質 | 備考 |
+| モデル | VRAM使用 | tok/s | 備考 |
 |---|---|---|---|
-| `qwen3:32b` | ~19GB | ✅ 動作確認済み | Thinking モード対応 |
+| `qwen3:32b` | ~19GB | - | Thinking モード対応 |
+| `qwen3:30b-a3b` | ~21GB | 150 | MoE（Qwen公式） |
+| `qwen3.8:27b` | ~20GB | 54 | MoE（Qwen公式）、速度は遅め |
+| `gemma4:26b` | ~19GB | 163 | Google製、高速 |
+| `gpt-oss:20b` | ~34GB | 160 | |
+| `nemotron-3.5-lightning:30b` | ~25GB | 181 | NVIDIA公式MoE、最速 |
 
 ## クォータについて
 
