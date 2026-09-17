@@ -91,6 +91,36 @@ uv run python teardown_vm.py --action delete --yes   # --yes でプロンプト�
 | `gpt-oss:20b` | ~34GB | 160 | |
 | `nemotron-3.5-lightning:30b` | ~25GB | 181 | NVIDIA公式MoE、最速 |
 
+## vLLM 並列ベンチマーク（作業中・未完了）
+
+### 目的
+Ollama逐次結果（gemma4:26b 154 tok/s）に対し、vLLM 10並列でのaggregate throughputを比較する。
+
+### スクリプト
+- `install_vllm.sh` — vLLMセットアップ（uv + venv）
+- `benchmark_vllm.py` — 障害調査プロンプト × 10並列、TTFT/E2E/tok/s計測
+
+### 既知の問題（2026-09-17 未解決）
+
+| # | 問題 | 解決済み | 備考 |
+|---|---|---|---|
+| 1 | `--quantization bitsandbytes` が vLLM 0.29.0 で削除済み | ✅ | AWQ quantized model に変更 |
+| 2 | `cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit` は compressed-tensors 形式 | ✅ | `--quantization` フラグを外してauto-detect |
+| 3 | Triton が `-L/lib/x86_64-linux-gnu` で `libcuda.so.1` を見つけられない | ✅ | `sudo ln -sf .../libcuda.so.580.178.04 /usr/lib/x86_64-linux-gnu/libcuda.so.1` |
+| 4 | GCC修正後もEngineCore初期化失敗 | ❌ 未解決 | 根本原因未特定。キャッシュクリア後も再現 |
+
+### 次の作戦候補
+- vLLM のバージョンを下げる（0.6系など古いものを試す）
+- Gemma4以外のモデル（TRITON_ATTNを強制しないもの）で試す
+- Docker imageを使う（公式 vLLM Docker は環境が整っている）
+
+### モデル情報
+- HF model ID: `cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit`（AWQ 4bit、gated不要）
+- 対応する Ollama モデル: `gemma4:26b`
+- VRAM: 16GB（AWQ 4bit）、A100 40GB で余裕あり
+
+---
+
 ## クォータについて
 
 GPU を使うには GPU 種別ごとにクォータ申請が必要（デフォルト 0）。
