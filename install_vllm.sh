@@ -1,18 +1,19 @@
 #!/bin/bash
-# vLLM + Gemma 4 26B (A4B MoE) セットアップ
-# 前提: Deep Learning VM (CUDA 12.9), HF_TOKEN 環境変数が設定済み
+# vLLM + Qwen3-30B-A3B (MoE) AWQ セットアップ
+# 前提: Deep Learning VM (CUDA 12.9)。公開モデルのためHF_TOKENは不要（設定されていれば使う）
 set -e
 
-if [ -z "${HF_TOKEN}" ]; then
-  echo "Error: HF_TOKEN is not set."
-  exit 1
-fi
-
-MODEL=${MODEL:-cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit}
+MODEL=${MODEL:-ELVISIO/Qwen3-30B-A3B-AWQ}
 PORT=${PORT:-8000}
 
 echo "=== GPU check ==="
 nvidia-smi
+
+echo "=== Installing build deps (python3.10-dev, build-essential) ==="
+# Deep Learning VMイメージに無いことがある。無いとTritonのCUDA拡張コンパイルが
+# 「Python.h: No such file or directory」や「cc1plus: No such file or directory」で失敗する。
+sudo apt-get update -qq
+sudo apt-get install -y python3.10-dev build-essential
 
 echo "=== Installing uv ==="
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -21,18 +22,20 @@ export PATH="$HOME/.local/bin:$PATH"
 echo "=== Installing vLLM (venv) ==="
 uv venv ~/.vllm-env
 source ~/.vllm-env/bin/activate
-uv pip install "vllm>=0.6.0" huggingface_hub
+uv pip install "vllm>=0.20.0" huggingface_hub
 
-echo "=== HuggingFace login ==="
-python3 -c "from huggingface_hub import login; login(token='${HF_TOKEN}')"
+if [ -n "${HF_TOKEN}" ]; then
+  echo "=== HuggingFace login ==="
+  python3 -c "from huggingface_hub import login; login(token='${HF_TOKEN}')"
+fi
 
 echo "=== Starting vLLM server ==="
 echo "  model: ${MODEL}"
 echo "  port : ${PORT}"
 
-# AWQ 4bit量子化済みモデル（~13GB）→ A100 40GBに余裕で収まる
+# AWQ 4bit量子化済みモデル（~15GB）→ A100 40GBに余裕で収まる
+# --quantizationは明示せずauto-detectに任せる（config.jsonの記載と食い違うと起動失敗するため）
 vllm serve "${MODEL}" \
-  --quantization awq \
   --dtype float16 \
   --max-model-len 4096 \
   --gpu-memory-utilization 0.90 \

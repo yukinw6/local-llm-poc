@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 vLLM 並列スループットベンチマーク（障害調査プロンプト固定）
-Ollama逐次結果（gemma4:26b 154.1 tok/s）との比較用
+Ollama逐次結果（qwen3:30b-a3b 158.5 tok/s）との比較用
 
 使い方:
   python benchmark_vllm.py
@@ -13,8 +13,8 @@ VLLM_URL    = os.environ.get("VLLM_URL", "http://localhost:8000")
 CONCURRENCY = int(os.environ.get("CONCURRENCY", "10"))
 OUT_FILE    = os.environ.get("BENCHMARK_OUT", "results_vllm.json")
 
-# Ollama逐次ベースライン（benchmark_report_20260910.html 障害調査）
-OLLAMA_BASELINE_TPS = 154.1
+# Ollama逐次ベースライン（qwen3:30b-a3b、障害調査プロンプト、2026-09-17実測）
+OLLAMA_BASELINE_TPS = 158.5
 
 SYSTEM = "あなたはSREエンジニアです。"
 USER = """以下の事実をもとに、原因仮説を可能性順に3つ挙げてください。
@@ -29,6 +29,10 @@ USER = """以下の事実をもとに、原因仮説を可能性順に3つ挙げ
 
 
 async def send_one(idx: int, model: str) -> dict:
+    return await asyncio.to_thread(_send_one_sync, idx, model)
+
+
+def _send_one_sync(idx: int, model: str) -> dict:
     payload = json.dumps({
         "model": model,
         "messages": [
@@ -95,11 +99,14 @@ def main():
     print(f"Prompt     : 障害調査（Ollama逐次ベースライン: {OLLAMA_BASELINE_TPS} tok/s）")
     print()
 
+    async def _run_all():
+        return await asyncio.gather(
+            *[send_one(i, model) for i in range(CONCURRENCY)],
+            return_exceptions=True,
+        )
+
     wall_start = time.perf_counter()
-    raw = asyncio.run(asyncio.gather(
-        *[send_one(i, model) for i in range(CONCURRENCY)],
-        return_exceptions=True,
-    ))
+    raw = asyncio.run(_run_all())
     wall_sec = time.perf_counter() - wall_start
 
     results = [r for r in raw if isinstance(r, dict)]
@@ -116,7 +123,7 @@ def main():
     print(f"Wall time          : {wall_sec:.1f}s")
     print(f"Total tokens       : {total_tokens}")
     print(f"Aggregate tok/s    : {agg_tps}  ← vLLM {CONCURRENCY}並列")
-    print(f"Baseline tok/s     : {OLLAMA_BASELINE_TPS}  ← gemma4:26b Ollama逐次")
+    print(f"Baseline tok/s     : {OLLAMA_BASELINE_TPS}  ← qwen3:30b-a3b Ollama逐次")
     print(f"Speedup (aggregate): {round(agg_tps / OLLAMA_BASELINE_TPS, 1)}x")
     if errors:
         print(f"Errors: {errors}")
