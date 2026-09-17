@@ -106,8 +106,8 @@ Ollama逐次結果（gemma4:26b 154 tok/s）に対し、vLLM 10並列でのaggre
 |---|---|---|---|
 | 1 | `--quantization bitsandbytes` が vLLM 0.29.0 で削除済み | ✅ | AWQ quantized model に変更 |
 | 2 | `cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit` は compressed-tensors 形式 | ✅ | `--quantization` フラグを外してauto-detect |
-| 3 | Triton が `-L/lib/x86_64-linux-gnu` で `libcuda.so.1` を見つけられない | ✅ | `sudo ln -sf .../libcuda.so.580.178.04 /usr/lib/x86_64-linux-gnu/libcuda.so.1` |
-| 4 | GCC修正後もEngineCore初期化失敗 | ❌ 未解決 | 根本原因未特定。キャッシュクリア後も再現 |
+| 3 | Triton GCC が `libcuda.so.1` のリンクで失敗（循環シンボリックリンクを誤作成・削除し libcuda.so.1 が消えた） | ✅ | `sudo ln -sf /usr/lib/x86_64-linux-gnu/libcuda.so.580.178.04 /usr/lib/x86_64-linux-gnu/libcuda.so.1` で復元 |
+| 4 | EngineCore初期化失敗（Triton GCC自体は手動実行で通るが vLLM では継続して失敗） | ❌ 未解決 | 根本原因未特定。キャッシュクリア後も再現 |
 
 ### 次の作戦候補
 - vLLM のバージョンを下げる（0.6系など古いものを試す）
