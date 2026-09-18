@@ -1,0 +1,532 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found]){display:none!important}</style></head><body>
+<title>vLLM並列化ベンチマーク</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg:#eef0f3;
+    --surface:#fcfcfb;
+    --surface-2:#ffffff;
+    --ink:#1b2430;
+    --ink-2:#57616f;
+    --muted:#8a93a0;
+    --border:#e1e4e9;
+    --amber:#c97a1e;
+    --amber-ink:#8a5312;
+    --blue:#2f6fed;
+    --blue-soft:#a9c0f6;
+    --blue-soft-ink:#3a5da3;
+    --good:#2f8f5b;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#101317;
+      --surface:#1a1a19;
+      --surface-2:#1d2126;
+      --ink:#edeff2;
+      --ink-2:#a7afbb;
+      --muted:#747e8a;
+      --border:#2a2e33;
+      --amber:#b87a22;
+      --amber-ink:#e0ad6c;
+      --blue:#5f86e6;
+      --blue-soft:#33405c;
+      --blue-soft-ink:#9fb2e0;
+      --good:#4bab79;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#101317;
+    --surface:#1a1a19;
+    --surface-2:#1d2126;
+    --ink:#edeff2;
+    --ink-2:#a7afbb;
+    --muted:#747e8a;
+    --border:#2a2e33;
+    --amber:#b87a22;
+    --amber-ink:#e0ad6c;
+    --blue:#5f86e6;
+    --blue-soft:#33405c;
+    --blue-soft-ink:#9fb2e0;
+    --good:#4bab79;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans JP', 'Hiragino Kaku Gothic ProN', sans-serif;
+    line-height:1.7;
+  }
+  .mono{ font-family:'IBM Plex Mono', ui-monospace, monospace; }
+  .page{
+    max-width:800px;
+    margin:0 auto;
+    padding:56px 24px 80px;
+    display:flex;
+    flex-direction:column;
+    gap:40px;
+  }
+
+  /* header */
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  h1{
+    font-size:clamp(26px,4vw,34px);
+    line-height:1.35;
+    margin:8px 0 6px;
+    font-weight:700;
+    text-wrap:balance;
+  }
+  .subhead{
+    color:var(--ink-2);
+    font-size:15px;
+    max-width:60ch;
+  }
+  .subhead .mono{ font-size:14px; }
+
+  /* hero stat */
+  .hero{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:32px 32px 28px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:24px;
+    flex-wrap:wrap;
+  }
+  .hero-number{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:700;
+    font-size:clamp(56px,11vw,96px);
+    line-height:1;
+    color:var(--blue);
+    letter-spacing:-0.02em;
+  }
+  .hero-number sup{
+    font-size:0.32em;
+    font-weight:600;
+    color:var(--ink-2);
+    margin-left:4px;
+  }
+  .hero-cap{
+    font-size:14px;
+    color:var(--ink-2);
+    margin-top:10px;
+  }
+  .hero-side{
+    display:flex;
+    gap:22px;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .hero-side .pair{ text-align:right; }
+  .hero-side .lbl{
+    font-size:11px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.06em;
+  }
+  .hero-side .val{
+    font-size:20px;
+    font-weight:600;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero-side .arrow{
+    align-self:center;
+    color:var(--muted);
+    font-size:20px;
+  }
+
+  /* section */
+  section{ display:flex; flex-direction:column; gap:14px; }
+  .sec-title{
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink-2);
+    text-transform:uppercase;
+    letter-spacing:.04em;
+  }
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:24px 26px;
+  }
+
+  /* bar chart */
+  .chart-row{
+    display:grid;
+    grid-template-columns: 128px 1fr 96px;
+    align-items:center;
+    gap:14px;
+    height:40px;
+  }
+  .chart-row + .chart-row{ margin-top:12px; }
+  .chart-label{ font-size:13.5px; color:var(--ink-2); text-align:right; }
+  .chart-track{
+    position:relative;
+    height:22px;
+    background:var(--surface-2);
+    border-radius:5px;
+    overflow:visible;
+  }
+  .chart-fill{
+    position:absolute; left:0; top:0; bottom:0;
+    border-radius:5px;
+    min-width:5px;
+  }
+  .chart-val{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    font-variant-numeric: tabular-nums;
+    font-weight:600;
+  }
+  .chart-note{ font-size:12px; color:var(--muted); margin-top:2px; }
+  .axis{
+    grid-column: 2 / 3;
+    display:flex; justify-content:space-between;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; color:var(--muted);
+    margin-top:2px;
+    padding:0 1px;
+  }
+
+  /* latency pair */
+  .latency-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:16px;
+  }
+  .lat-tile{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:20px 22px;
+  }
+  .lat-tile .lbl{ font-size:12.5px; color:var(--ink-2); margin-bottom:10px; }
+  .lat-tile .num{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:32px; font-weight:700;
+    font-variant-numeric: tabular-nums;
+  }
+  .lat-tile .num .unit{ font-size:16px; font-weight:500; color:var(--ink-2); margin-left:4px;}
+  .lat-tile .sub{ font-size:12px; color:var(--muted); margin-top:6px; font-family:'IBM Plex Mono',monospace;}
+  .lat-note{
+    font-size:13px; color:var(--ink-2);
+    background:var(--surface-2);
+    border-radius:10px;
+    padding:12px 16px;
+  }
+
+  /* headroom callout */
+  .callout{
+    display:flex; gap:16px; align-items:center;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:18px 22px;
+  }
+  .callout .big{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:30px; font-weight:700; color:var(--good);
+    white-space:nowrap;
+  }
+  .callout .txt{ font-size:13.5px; color:var(--ink-2); }
+  .callout .txt b{ color:var(--ink); font-weight:600; }
+
+  /* data table */
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+  }
+  caption{ text-align:left; font-size:12px; color:var(--muted); margin-bottom:8px; font-family:'IBM Plex Sans JP',sans-serif;}
+  th, td{
+    text-align:right;
+    padding:9px 10px;
+    border-bottom:1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+    white-space:nowrap;
+  }
+  th:first-child, td:first-child{ text-align:left; }
+  th{
+    color:var(--muted);
+    font-weight:500;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.03em;
+  }
+  tbody tr:last-child td{ border-bottom:none; }
+  .tbl-wrap{ overflow-x:auto; }
+  .tag{
+    display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:7px;
+  }
+
+  /* footer */
+  footer{
+    border-top:1px solid var(--border);
+    padding-top:20px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    color:var(--muted);
+    display:flex; flex-wrap:wrap; gap:6px 18px;
+  }
+
+  @media (max-width:560px){
+    .hero{ flex-direction:column; align-items:flex-start; }
+    .hero-side{ align-self:stretch; justify-content:space-between; }
+    .latency-grid{ grid-template-columns:1fr; }
+    .chart-row{ grid-template-columns: 92px 1fr 76px; }
+  }
+
+  /* sample io */
+  .sample-io{ display:flex; flex-direction:column; gap:12px; }
+  .sample-block{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px 16px;
+  }
+  .sample-tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--muted);
+    margin-bottom:8px;
+  }
+  .sample-text{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    line-height:1.65;
+    color:var(--ink-2);
+    white-space:pre-wrap;
+    max-height:220px;
+    overflow-y:auto;
+  }
+  .sample-text b{ color:var(--ink); font-weight:600; }
+  .sample-out .sample-text{ color:var(--ink); }
+  .decision{
+    background:var(--ink);
+    color:var(--bg);
+    border-radius:14px;
+    padding:24px 28px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .decision .tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--blue);
+  }
+  .decision .body{
+    font-size:14px; line-height:1.8;
+    max-width:70ch;
+  }
+  .decision .body b{
+    font-weight:600;
+    text-decoration:underline;
+    text-decoration-color:var(--blue);
+    text-decoration-thickness:2px;
+    text-underline-offset:3px;
+  }
+</style>
+
+<div class="page">
+
+  <header>
+    <div class="eyebrow">local-llm-poc &middot; 2026-09-17</div>
+    <h1>vLLMは実際どれだけ効くのか</h1>
+    <div class="subhead">
+      GCP A100 40GB(SPOT) 上で、<span class="mono">Qwen3-30B-A3B</span>(MoE, AWQ 4bit量子化)を対象に、
+      Ollamaの逐次処理と vLLM の並列処理を同一プロンプトで実測比較した。
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-title">何を測ったか(入力・出力サンプル)</div>
+    <div class="card sample-io">
+      <div class="sample-block">
+        <div class="sample-tag">入力プロンプト(system + user)</div>
+        <div class="sample-text">あなたはSREエンジニアです。
+
+以下の事実をもとに、原因仮説を可能性順に3つ挙げてください。
+各仮説について「確認すべき証拠」と「断定できる条件」を示してください。
+情報が不足している場合は断定せず、その旨を明記してください。
+
+【観測された事実】
+- Web APIで503エラーが増加（通常の5倍、15分前から）
+- Cloud Run自体のインスタンス数・CPU・メモリは正常範囲
+- Backend VMの一部（3台中2台）でHealth Check失敗
+- 同時刻にFirewallルールの変更が実施された（変更内容の詳細は未確認）</div>
+      </div>
+      <div class="sample-block sample-out">
+        <div class="sample-tag">出力サンプル(qwen3:30b-a3b、実測時と同一プロンプト)</div>
+        <div class="sample-text">原因仮説（可能性順）
+
+<b>1. ファイアウォールルール変更によりヘルスチェックトラフィックがブロックされた</b>
+<b>根拠:</b>
+- ファイアウォールルール変更と503エラー発生が同時刻に発生
+- ヘルスチェック失敗(2台/3台)は、ロードバランサがバックエンドVMにアクセスできないことを示唆
+<b>確認すべき証拠:</b>
+- ファイアウォールルールの詳細（ソースIP、宛先ポート、プロトコル）
+- ヘルスチェックの設定（ポート、パス）が変更されていないか
+<b>断定できる条件:</b>
+- ファイアウォールルールが「ロードバランサIP→バックエンドVMのヘルスチェックポート」をブロックしている
+<b>情報不足のため断定不可:</b>
+- ファイアウォールルールの詳細が未確認のため、断定は不可。確認が必要。
+
+…(仮説2・3も同様の構成で続く)…
+
+<b>総括</b>
+<b>最も可能性が高い:</b> ファイアウォールルール変更によるヘルスチェック/トラフィックブロック
+<b>推奨アクション:</b>
+1. ファイアウォールルールを復元（変更前設定へのロールバック）
+2. ヘルスチェックポートの接続テストを実施</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="hero">
+    <div>
+      <div class="hero-number">6.3<sup>×</sup></div>
+      <div class="hero-cap">vLLM 10並列 の アグリゲートスループット倍率<br>(Ollama逐次比)</div>
+    </div>
+    <div class="hero-side">
+      <div class="pair">
+        <div class="lbl">Ollama 逐次</div>
+        <div class="val">158.5 <span style="font-size:12px;color:var(--muted);">tok/s</span></div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="pair">
+        <div class="lbl">vLLM 10並列</div>
+        <div class="val" style="color:var(--blue);">993.6 <span style="font-size:12px;color:var(--muted);">tok/s</span></div>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <div class="sec-title">アグリゲートスループット</div>
+    <div class="card">
+      <div class="chart-row">
+        <div class="chart-label">Ollama<br>逐次</div>
+        <div class="chart-track">
+          <div class="chart-fill" style="width:15.9%;background:var(--amber);"></div>
+        </div>
+        <div class="chart-val" style="color:var(--amber-ink);">158.5</div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-label">vLLM<br>単独</div>
+        <div class="chart-track">
+          <div class="chart-fill" style="width:16.1%;background:var(--blue-soft);"></div>
+        </div>
+        <div class="chart-val" style="color:var(--blue-soft-ink);">160.3</div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-label">vLLM<br>10並列</div>
+        <div class="chart-track">
+          <div class="chart-fill" style="width:100%;background:var(--blue);"></div>
+        </div>
+        <div class="chart-val" style="color:var(--blue);">993.6</div>
+      </div>
+      <div class="axis"><span>0</span><span>tok/s (aggregate)</span><span>993.6</span></div>
+      <div class="chart-note">単独実行(1リクエストのみ)では Ollama と vLLM はほぼ同速。差が出るのは同時実行時。</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title">1リクエストあたりの応答時間(vLLM, 同一トークン予算)</div>
+    <div class="latency-grid">
+      <div class="lat-tile">
+        <div class="lbl">単独実行時</div>
+        <div class="num">6.2<span class="unit">秒</span></div>
+        <div class="sub">avg 1000.8 tok &middot; TTFT ~25ms</div>
+      </div>
+      <div class="lat-tile">
+        <div class="lbl">10並列実行時(1件あたり)</div>
+        <div class="num" style="color:var(--blue);">10.2<span class="unit">秒</span></div>
+        <div class="sub">avg 1012.3 tok &middot; TTFT ~112ms</div>
+      </div>
+    </div>
+    <div class="lat-note">
+      同時に10件流しても、1件あたりの所要時間は6.2秒→10.2秒(+65%)止まり。Ollamaで10件を逐次処理すれば単純計算で約62秒かかる計算になる。
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title">実運用の目安</div>
+    <div class="callout">
+      <div class="big">51×</div>
+      <div class="txt">GPU KVキャッシュ上の同時実行キャパシティ(4,096 tok/リクエスト換算)。<b>想定される同時20〜30人</b>は、今回の実測(10並列)を超えるが、メモリ上は十分な余裕がある。</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title">詳細データ</div>
+    <div class="tbl-wrap card">
+      <table>
+        <caption>2026-09-17実測。プロンプトは障害調査(SRE)シナリオ固定。</caption>
+        <thead>
+          <tr>
+            <th style="text-align:left;">条件</th>
+            <th>同時リクエスト数</th>
+            <th>合計トークン</th>
+            <th>Wall time</th>
+            <th>Aggregate tok/s</th>
+            <th>平均TTFT</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="text-align:left;"><span class="tag" style="background:var(--amber);"></span>Ollama 逐次</td>
+            <td>1</td>
+            <td>4,839</td>
+            <td>30.5s</td>
+            <td>158.5</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td style="text-align:left;"><span class="tag" style="background:var(--blue-soft);"></span>vLLM 単独</td>
+            <td>1</td>
+            <td>10,008</td>
+            <td>62.4s</td>
+            <td>160.3</td>
+            <td>~25ms</td>
+          </tr>
+          <tr>
+            <td style="text-align:left;"><span class="tag" style="background:var(--blue);"></span>vLLM 10並列</td>
+            <td>10</td>
+            <td>10,123</td>
+            <td>10.2s</td>
+            <td>993.6</td>
+            <td>~112ms</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title">モデル選定の経緯</div>
+    <div class="decision">
+      <div class="tag">なぜ Gemma4 ではないのか</div>
+      <div class="body">
+        当初はOllamaで最速だった <b>gemma4:26b(MoE)</b> を対象にする予定だったが、vLLM向けの量子化チェックポイントが<b>個人開発者1名によるものしか存在せず</b>、重みの命名規則の違いに起因するvLLM側のバグ(2026年5月修正済み)を踏んだ実績もあるなど、供給が薄く不安定だった。同程度の速度実績があり、<b>複数の独立した量子化提供元・1年以上の実運用実績</b>がある Qwen3-30B-A3B に切り替えて計測した。
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>GPU: NVIDIA A100 40GB (SPOT, asia-northeast1)</span>
+    <span>Model: Qwen3-30B-A3B (MoE)</span>
+    <span>Quant: ELVISIO/Qwen3-30B-A3B-AWQ (4bit)</span>
+    <span>Ollama: qwen3:30b-a3b</span>
+    <span>vLLM: v0.20+ (auto quant detect)</span>
+  </footer>
+
+</div>
+
+</body></html>
